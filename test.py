@@ -11,6 +11,7 @@ width, height = 800, 600
 grey = (37, 35, 35)
 red = (255, 0 , 0)
 
+#blah blah
 
 pygame.init()
 screen = pygame.display.set_mode((width, height))
