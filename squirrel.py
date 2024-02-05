@@ -17,8 +17,9 @@ orange = (240, 150, 20)
 
 # generate a 6x6 grid
 cell_width = 60
-D = 6 # dimensions
+DIM = 6 # dimensions
 thickness = 3
+init_vars = (3, 35, 4) # player initial ind, home's index, numbe of bombs/obstacles
 
 class Entity:
     score = 0 # player's score
@@ -29,30 +30,17 @@ class Entity:
         self.index = index
         self.identitiy = identitiy
         Entity.entities.append(self)
-    
-    def restart():
-        '''Restarts game after squirel dies or wins, but doesn't reset score'''
-        # Entity.entities = []
-        # initialize_players()
-        for entity in Entity.entities:
-            iden = entity.identitiy
-            if iden == "player":
-                entity.index = 3
-            if iden == "bomb":
-                entity.index = randint(1, D**2 -2)
-        print(f"current score: {Entity.score}")
-
 
     def up(self):
-        if self.index - 6 >= 0:
-            self.index -= 6
+        if self.index - DIM >= 0:
+            self.index -= DIM
             Entity.score -= 1
     def down(self):
-        if self.index + 6 <= 35:
-            self.index += 6
+        if self.index + DIM <= DIM**2 - 1:
+            self.index += DIM
             Entity.score -= 1
     def right(self):
-        if self.index + 1 <= 35:
+        if self.index + 1 <= DIM**2 - 1:
             self.index += 1
             Entity.score -= 1
     def left(self):
@@ -60,6 +48,16 @@ class Entity:
             self.index -= 1
             Entity.score -=1
 
+
+    def restart(player_ind=init_vars[0]):
+        '''Restarts game after squirel dies or wins, but doesn't reset score'''
+        for entity in Entity.entities:
+            iden = entity.identitiy
+            if iden == "player":
+                entity.index = player_ind
+            if iden == "bomb":
+                entity.index = randint(1, DIM**2 -2)
+        print(f"current score: {Entity.score}")
 
 
     def state_handler(self, mob):
@@ -72,8 +70,20 @@ class Entity:
             print("you win")
             Entity.score += 100
             Entity.restart()
+
+    def initialize_players(player_ind, home_ind, bomb_num):
+        Entity(player_ind, Entity.identities[0]) # squirrel
+        Entity(home_ind, Entity.identities[2]) # home
+        make_bombs(bomb_num)
         
 
+    def get_state(self):
+        if self.identitiy == "player":
+            return self.index
+        else: False
+    
+    def get_reward():
+        return Entity.score
 
 
 def draw_square(side_length, posx, posy, color, thickness):
@@ -101,37 +111,45 @@ def draw_circle(rad, col, center):
 
 def get_cell_matrix():
 
-    grid_length = (cell_width + thickness)*D
+    grid_length = (cell_width + thickness)*DIM
     locx, locy = (width - grid_length)//2, (height-grid_length)//2
 
-    return [(locx + cell_width*(x%D + 0.5)//1, locy + cell_width*(x//D +0.5)//1) for x in range(6*6)]
+    return [(locx + cell_width*(x%DIM + 0.5)//1, locy + cell_width*(x//DIM +0.5)//1) for x in range(DIM**2)]
 
 def make_bombs(num):
-    locations = [randint(1, D**2 -2) for i in range(num)]
+    locations = [randint(1, DIM**2 -2) for i in range(num)]
     for location in locations:
         # rindex = randint(1, D**2 -1)
         Entity(location, Entity.identities[1])
 
 
-def initialize_players():
-    squirrel = Entity(3, Entity.identities[0])
-    home = Entity(35, Entity.identities[2])
-    make_bombs(4)
-
 cell_matrix = get_cell_matrix()
-initialize_players()
+Entity.initialize_players(*init_vars)
 
 pygame.init()
 screen = pygame.display.set_mode((width, height))
 clock = pygame.time.Clock()
 
 
-while True:
+
+run = True
+while run:
     screen.fill(grey)
+
+            
+    draw_grid(cell_width, DIM, white, 3)
+    
+    for entity in Entity.entities:
+        squirrel = Entity.entities[0]
+        color_table = {"player": gold, "bomb": red, "home": orange}
+        color = color_table[entity.identitiy]
+        draw_circle(cell_width//3, color, cell_matrix[entity.index])
+        squirrel.state_handler(entity)
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
-            quit()
+            pygame.quit()
+            run = False
         if event.type == pygame.KEYDOWN:
             for entity in Entity.entities:
                 if entity.identitiy == "player":
@@ -144,17 +162,21 @@ while True:
                         squirrel.left()
                     if event.key == pygame.K_RIGHT or event.key == pygame.K_d:
                         squirrel.right()
-            
-    draw_grid(cell_width, D, white, 3)
-    
-    for entity in Entity.entities:
-        squirrel = Entity.entities[0]
-        color_table = {"player": gold, "bomb": red, "home": orange}
-        color = color_table[entity.identitiy]
-        draw_circle(cell_width//3, color, cell_matrix[entity.index])
-        squirrel.state_handler(entity)
+    if not run:
+        break
+    pygame.display.update()
+    clock.tick(fps)
 
-    
+pygame.init()
+screen = pygame.display.set_mode((width, height))
+clock = pygame.time.Clock()
+while not run:
+    screen.fill(grey)
+    draw_circle(cell_width//3, color, cell_matrix[entity.index])
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+           quit()
     
     pygame.display.update()
     clock.tick(fps)
